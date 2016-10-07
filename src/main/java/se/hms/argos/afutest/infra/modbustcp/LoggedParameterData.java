@@ -90,13 +90,17 @@ public class LoggedParameterData {
 	/*
 	 * Get the inputregister loged value from the argos REST api.
 	 */
-	public String getInputRegister(String systemId, String parameterID) {
-		String inputRegister = null;
-		out.println("Lets see...........getInputRegister............");
-
-		ClientResponse clientResponse = client.resource(SYSTEM_RESOURCE_URL).path(systemId).path("/log").path(parameterID)
+	public String[][] getInputRegister(String systemId, String parameterID1,String parameterID2,String parameterID3) {
+		String [][]inputRegister = null;
+		out.println("Lets see...........getInputRegister from API............");
+		int row = 0;
+		int col =0;
+		ClientResponse clientResponse = client.resource(SYSTEM_RESOURCE_URL).path(systemId).path("/live")
 				.queryParam("accesskey", accessKey)
-				.queryParam("limitrows", "1").get(ClientResponse.class);
+				.queryParam("id", parameterID1)
+				.queryParam("id", parameterID2)
+				.queryParam("id", parameterID3)
+				.get(ClientResponse.class);
 
 		String strResponse = clientResponse.getEntity(String.class);
 
@@ -108,12 +112,14 @@ public class LoggedParameterData {
 			}.getType());
 			// out.println("\n");
 			// Print information about the systems.
+			inputRegister = new String [systems.size()][systems.size()];
 			for (LoggedData system : systems) {
-
+				col=0;
 				// out.println(String.format("timestamp: %s",system.timestamp));
 				// out.println(String.format("value: %s", system.value));
 				// apivalue = system.value;
-				out.println(inputRegister = system.value);
+				out.println(inputRegister[row][col++] = system.id);
+				out.print( "\t" + (inputRegister[row++][col] = system.value));
 			}
 
 			// Print information about the system.
@@ -137,7 +143,7 @@ public class LoggedParameterData {
 	}
 
 	private class LoggedData extends System {
-		public String timestamp, value;
+		public String value;
 	}
 
 	private class Error {
@@ -175,9 +181,9 @@ public class LoggedParameterData {
 		//account.getInputRegister(parameterID1);
 		//account.getInputRegister(parameterID2);
 		//account.getInputRegister(parameterID3);*/
-		for(String pID: parameterId){
-			account.getInputRegister(systemId,pID);
-		}
+		//for(String pID: parameterId){
+			account.getInputRegister(systemId,parameterId[0],parameterId[1], parameterId[2]);
+		//}
 		
 
 	}

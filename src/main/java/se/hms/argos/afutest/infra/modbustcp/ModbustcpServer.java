@@ -170,7 +170,7 @@ public class ModbustcpServer implements InitializingBean, DisposableBean
 	
 	private void valueValidation() 
 	{
-		System.out.println("New Check Of Argus and Modbus values");
+		System.out.println("New Check Of Argos and Modbus values");
 	      String accessKey = "51F2531794288EBA64764B38D2516890";
 	     /* String systemId = "003011FAE2BA";               used to test purposes only
 	      String parameterID1 = "66261.9269.172526";
@@ -181,23 +181,50 @@ public class ModbustcpServer implements InitializingBean, DisposableBean
 		String systemId = account.getSystemID();
 		String []parameterId = account.getParametersID(systemId);
 		int index = 0;
-		for(String pID: parameterId){
-			int val = Integer.parseInt(account.getInputRegister(systemId,pID));
-			if(account.getName(index).equals("test1")){
-				System.out.println("Test1 InputRegister Value " + val +" == modbusinputregister " + inputRegister1.getValue() + (val == inputRegister1.getValue()));
-				
-			}else if(account.getName(index).equals("test2")){
-				System.out.println("Test2 InputRegister Value " + val +" == modbusinputregister " + inputRegister2.getValue() + (val == inputRegister2.getValue()));
-			}else if(account.getName(index).equals("test3")){
-				System.out.println("Test3 InputRegister Value " + val +" == modbusinputregister " + inputRegister3.getValue() + (val == inputRegister3.getValue()));
-			}else {
-				System.out.println("Something Wrong.....");
-			}
-			index++;
+
+		String [][]inputRegisterId  = account.getInputRegister(systemId,parameterId[0],parameterId[1], parameterId[2]);
+
+
+		
+		/*for(String[] arr2: inputRegisterId)
+		{
+			System.out.println("out array");
+		    for(String val: arr2){
+		    	System.out.println("inner array");
+		        System.out.println(val);
+		    }
+		}*/
+		
+		for(int i = 0; i < inputRegisterId.length; i++)
+		{
+			// TODO: fix the array parameterID in the class LoggedParamData by adding two dimensions array [parametid][name]  H
+			//		so we can compare by names
+			for(int j = 0; j < 1; j++)
+			{
+				//System.out.println(inputRegisterId[i][j] + " " + parameterId[i]);
+				if (inputRegisterId[i][j].equals(parameterId[i]))
+				{
+					
+					System.out.println(inputRegisterId[i][j] + " T " + parameterId[i]);
+					int val = Integer.parseInt(inputRegisterId[i][j+1]);
+					
+					if(account.getName(i).equals("test1"))
+					{
+						System.out.println(val + " ==  " + inputRegister1.getValue() +" ===> "+ (val == inputRegister1.getValue() ) );
+					}else if(account.getName(i).equals("test2"))
+					{
+						System.out.println(val + " ==  " + inputRegister2.getValue() +" ===> "+ (val == inputRegister2.getValue() ) );
+					} else if(account.getName(i).equals("test3"))
+					{
+						System.out.println(val + " ==  " + inputRegister3.getValue() +" ===> "+ (val == inputRegister3.getValue() ) );
+					} 
 			
-
+						
+				}
+					
+			}
+			
 		}
-
 		
 		
 	}
