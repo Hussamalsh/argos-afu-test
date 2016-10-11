@@ -39,21 +39,27 @@ public class ModbustcpServer implements InitializingBean, DisposableBean {
 	SimpleInputRegister inputRegister1;
 	SimpleInputRegister inputRegister2;
 	SimpleInputRegister inputRegister3;
+	
+	/** Value - {@value}, timer object to count the time of the game. */
+	private Timer timer;
+	private Timer timer2;
+	private final int DELAY1 = 120000;    //3600 000 for one hour
+	private final int DELAY2 = 125000;
 
-	public ModbustcpServer(ModbustcpConfig config) throws Exception {
+	public ModbustcpServer(ModbustcpConfig config) throws Exception
+	{
 		this.config = config;
 	}
 
 	@Override
-	public void afterPropertiesSet() {
+	public void afterPropertiesSet() 
+	{
 		start();
 	}
 
 	protected boolean start() {
 
-		/** Value - {@value}, timer object to count the time of the game. */
-		Timer timer;
-		Timer timer2;
+
 
 		try {
 			logger.info("ModbustcpServer starting");
@@ -62,8 +68,8 @@ public class ModbustcpServer implements InitializingBean, DisposableBean {
 			inputRegister2 = new SimpleInputRegister(40);
 			inputRegister3 = new SimpleInputRegister(50);
 
-			timer = new Timer(60000, new MyTimerActionListener());
-			timer2 = new Timer(90000, new MyTimerActionListener2());
+			timer = new Timer(DELAY1, new MyTimerActionListener());
+			timer2 = new Timer(DELAY2, new MyTimerActionListener2());
 
 			// TODO: Check if this is a good way starting the Modbus/TCP Server
 
@@ -180,7 +186,8 @@ public class ModbustcpServer implements InitializingBean, DisposableBean {
 		boolean testStatus = false;
 		for (int i = 0; i < inputRegisterId.length; i++) {
 			for (int j = 0; j < 1; j++) {
-				// System.out.println(inputRegisterId[i][j] + " "+parameterId[i]);
+				// System.out.println(inputRegisterId[i][j] + "
+				// "+parameterId[i]);
 				if (inputRegisterId[i][j].equals(parameterId[i][j + 1])) {
 
 					System.out.println(inputRegisterId[i][j] + " == " + parameterId[i][j + 1]);
@@ -203,8 +210,8 @@ public class ModbustcpServer implements InitializingBean, DisposableBean {
 
 		}
 
-		System.out.println("***********************  Test " + i + " is " + 
-		((testStatus) ? "Successful ***********************" : "Failed ************************"));
+		System.out.println("***********************  Test " + i + " is "
+				+ ((testStatus) ? "Successful ***********************" : "Failed ************************"));
 
 	}
 
