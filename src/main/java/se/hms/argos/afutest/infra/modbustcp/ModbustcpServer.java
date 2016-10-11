@@ -197,7 +197,7 @@ public class ModbustcpServer implements InitializingBean, DisposableBean {
 						System.out.println(parameterId[i][j] + " " + val + " ==  " + inputRegister1.getValue()
 								+ " ===> " + (testStatus = val == inputRegister1.getValue()));
 					} else if (parameterId[i][j].equals("test2")) {
-						System.out.println(parameterId[i][j] + " " + val + " ==  " + inputRegister2.getValue()
+						System.out.println(parameterId[i][j] + " " + val + " == " + inputRegister2.getValue()
 								+ " ===> " + (testStatus = val == inputRegister2.getValue()));
 					} else if (parameterId[i][j].equals("test3")) {
 						System.out.println(parameterId[i][j] + " " + val + " ==  " + inputRegister3.getValue()
