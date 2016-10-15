@@ -1,4 +1,4 @@
-package se.hms.argos.afutest.infra.modbustcp;
+package se.hms.argos.afutest.infra.simulator;
 
 import java.io.PrintStream;
 import java.util.List;
@@ -104,12 +104,12 @@ public class LoggedParameterData {
 		if (clientResponse.getClientResponseStatus() == Status.OK) {
 
 			// Deserialize the JSON data.
-			List<LoggedData> systems = new Gson().fromJson(strResponse, new TypeToken<List<LoggedData>>() {
+			List<liveData> systems = new Gson().fromJson(strResponse, new TypeToken<List<liveData>>() {
 			}.getType());
 			// out.println("\n");
 			// Print information about the systems.
 			inputRegister = new String[systems.size()][systems.size()];
-			for (LoggedData system : systems) {
+			for (liveData system : systems) {
 				col = 0;
 				// out.println(String.format("timestamp: %s",system.timestamp));
 				// out.println(String.format("value: %s", system.value));
@@ -125,6 +125,50 @@ public class LoggedParameterData {
 
 		return inputRegister;
 	}
+	
+	
+	/*
+	 * Get the inputregister loged value from the argos REST api.
+	 */
+	public String[][] getLoggedData(String systemId, String parameterID,String startdate,String enddate ) {
+		String[][] loggedData = null;
+		out.println("Lets see...........LoggedData from API............");
+		int row = 0, col = 0;
+		ClientResponse clientResponse = client.resource(SYSTEM_RESOURCE_URL).path(systemId).path("/log")
+				.path(parameterID)
+				.queryParam("accesskey", accessKey)
+				.queryParam("startdate", startdate)// 
+				.queryParam("enddate", enddate ) //"2016-10-14T14:00:0020"
+				.get(ClientResponse.class);
+//66261.9269.173394?accesskey=51F2531794288EBA64764B38D2516890&startdate=2016-10-14T08:00:0020UTC&enddate=2016-10-14T13:30:0020
+		String strResponse = clientResponse.getEntity(String.class);
+
+		// Do we have a valid request.
+		if (clientResponse.getClientResponseStatus() == Status.OK) {
+
+			// Deserialize the JSON data.
+			List<LoggedData> systems = new Gson().fromJson(strResponse, new TypeToken<List<LoggedData>>() {
+			}.getType());
+			// out.println("\n");
+			// Print information about the systems.
+			loggedData = new String[systems.size()][systems.size()];
+			out.println(systems.size());
+			for (LoggedData system : systems) {
+				col = 0;
+				// out.println(String.format("timestamp: %s",system.timestamp));
+				// out.println(String.format("value: %s", system.value));
+				out.println((loggedData[row][col++] = system.timestamp));
+				out.print((loggedData[row++][col] = system.value + "\n"));
+			}
+
+			// Print information about the system.
+
+		} else {
+			printErrorInformation(strResponse);
+		}
+
+		return loggedData;
+	}
 
 	private class System 
 	{
@@ -138,7 +182,12 @@ public class LoggedParameterData {
 		public String deviceName, /* id, name, */ pointType, unit, logInterval;
 	}
 
+	private class liveData extends System {
+		public String value;
+	}
+	
 	private class LoggedData extends System {
+		public String timestamp;
 		public String value;
 	}
 
@@ -176,6 +225,8 @@ public class LoggedParameterData {
 		// Print logged data for a given parameter == oldcode
 
 		account.getInputRegister(systemId, parameterId[0][1], parameterId[1][1], parameterId[2][1]);
+		//startdate = Ex="2016-10-14T10:54:0020UTC" ,,, enddate Ex="2016-10-14T10:54:0020UTC"
+		account.getLoggedData(systemId, parameterId[0][1],"2016-10-14T10:54:0020UTC", "2016-10-14T15:54:002");
 
 	}
 

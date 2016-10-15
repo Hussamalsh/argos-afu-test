@@ -4,14 +4,16 @@ import org.eclipse.jetty.server.Connector;
 
 import se.hms.argos.afutest.infra.http.internal.InternalWebMvcSetup;
 import se.hms.argos.afutest.infra.http.internal.api.rest.controller.DummyController;
+
 import se.hms.argos.afutest.infra.modbustcp.ModbustcpBeans;
+import se.hms.argos.afutest.infra.simulator.SmilatorBeans;
 import se.hms.argos.common.server.ArgosServer;
 
 public class ArgosTestServer extends ArgosServer
 {
    public ArgosTestServer(ArgosTestConfig config)
    {
-      this(config, ModbustcpBeans.class);
+      this(config, ModbustcpBeans.class,SmilatorBeans.class);
    }
 
    public ArgosTestServer(ArgosTestConfig config, Class<?>... springAnnotatedClasses)
