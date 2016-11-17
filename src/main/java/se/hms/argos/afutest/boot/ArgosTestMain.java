@@ -21,7 +21,7 @@ public class ArgosTestMain
       ArgosTestServer server = new ArgosTestServer(config);
       if (!server.start() || !server.join())
       {
-         System.exit(1);
+         System.exit(1);  
       }
    }
 }

@@ -2,6 +2,9 @@ package se.hms.argos.afutest.infra.simulator;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Random;
 
 import javax.swing.Timer;
 
@@ -16,10 +19,10 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 
+import ch.qos.logback.core.net.SyslogOutputStream;
 import se.hms.argos.afutest.infra.modbustcp.ModbustcpServer;
 import se.hms.argos.afutest.infra.simulator.LoggedParameterData;
 
-import se.hms.argos.afutest.infra.simulator.ModbustcpConfig;
 import se.hms.argos.common.server.spring.mvc.MediaTypeConstants;
 
 @RequestMapping(produces = MediaTypeConstants.APPLICATION_JSON)
@@ -39,31 +42,46 @@ public class Simulator implements InitializingBean, DisposableBean {
 	private final ModbustcpConfig config;
 
 	private String systemId;
-	private String[][] parameterId;
+	private String[] parameterTag;
 	private int savedInputReg1, savedInputReg2, savedInputReg3;
 
 	/** Value - {@value}, timer object to count the time of the game. */
 	private Timer inputRegtimer;
 	private Timer apiValtimer;
-	private Timer loggedValtimer;
+	private Timer loggedValAtimer;
+	private Timer loggedValBtimer;
+	private Timer alarmtimer;
+						
+	private final int DELAY1 = 37890000; // 3600 000 for one hour
+	private final int DELAY2 = 3899999;
+	private final int DELAY3A = 7200000;// 7499 099;//7200 000; // two hours
+										// //10 800 000 tre hours
+	private final int DELAY3B = 7200000;// 7200 000; // two hours //10 800 000
+										// tre hours
 
-	private final int DELAY1 = 120000; // 3600 000 for one hour
-	private final int DELAY2 = 130000;
-	private final int DELAY3 = 190000;//7200000; // two hours
-
+	private final int DELAY3 = 300000 ; //5min
+	
+	
 	private LoggedParameterData account;
-	private String timeShifting;
+	private String startTime;
+	private String endTime;
+	private int[][] SavedInputReg = new int[2][3];
 
 	public Simulator(ModbustcpConfig c) throws Exception {
 		config = c;
 		inputRegtimer = new Timer(DELAY1, new MyTimerActionListener());
 		apiValtimer = new Timer(DELAY2, new MyTimerActionListener2());
-		loggedValtimer = new Timer(DELAY3, new MyTimerActionListener3());
+		loggedValAtimer = new Timer(DELAY3A, new MyTimerActionListener3());
+		loggedValBtimer = new Timer(DELAY3B, new MyTimerActionListener3());
+		alarmtimer = new Timer(DELAY3, new MyTimerActionListeneralarm());
 		savedInputReg1 = (ModbustcpServer.inputRegister1).getValue();
 		savedInputReg2 = (ModbustcpServer.inputRegister2).getValue();
 		savedInputReg3 = (ModbustcpServer.inputRegister3).getValue();
-		timeShifting = CurrentTime.getCurretTime();
-		System.out.print("Simulator .........................");
+		startTime = CurrentTime.getCurretTime(true);
+		System.out.print("Simulator cons...........0000.............." + savedInputReg1);
+		String accessKey = "51F2531794288EBA64764B38D2516890";
+		account = new LoggedParameterData(accessKey);
+		systemId = account.getSystemID();
 	}
 
 	@Override
@@ -79,13 +97,16 @@ public class Simulator implements InitializingBean, DisposableBean {
 
 		inputRegtimer.start();
 		apiValtimer.start();
-		loggedValtimer.start();
+		loggedValAtimer.start();
+		alarmtimer.start();
 
 	}
 
 	@Override
 	public void destroy() throws Exception {
-
+		// inputRegtimer.stop();
+		// apiValtimer.stop();
+		// loggedValAtimer.stop();
 	}
 
 	private int i = 0;
@@ -94,14 +115,16 @@ public class Simulator implements InitializingBean, DisposableBean {
 		// for (int i =0; i < 30 ; i++){
 		/// TODO: Run every hour so that inputregister will change everytime
 
-		i++;
 		int iR1 = (ModbustcpServer.inputRegister1).getValue();
 		int iR2 = (ModbustcpServer.inputRegister2).getValue();
 		int iR3 = (ModbustcpServer.inputRegister3).getValue();
+		// SavedInputReg[1] = SavedInputReg[0].clone();
+		i++;
+		ModbustcpServer.inputRegister1.setValue((++iR1));
+		ModbustcpServer.inputRegister2.setValue((++iR2));
+		ModbustcpServer.inputRegister3.setValue((++iR3));
 
-		ModbustcpServer.inputRegister1.setValue(++iR1);
-		ModbustcpServer.inputRegister2.setValue(++iR2);
-		ModbustcpServer.inputRegister3.setValue(++iR3);
+		// System.out.println(Arrays.deepToString(SavedInputReg));
 
 		counterTest.inc();
 		System.out.println("increment by one the inputregisters of the modbus.  Number of test  = " + i);
@@ -134,7 +157,7 @@ public class Simulator implements InitializingBean, DisposableBean {
 		public void actionPerformed(ActionEvent arg0) {
 			// TODO Auto-generated method stub
 			try {
-				valueValidation();
+				liveValValidation();
 			} catch (NullPointerException e) {
 				System.out.println("Caught the NullPointerException");
 			}
@@ -152,7 +175,42 @@ public class Simulator implements InitializingBean, DisposableBean {
 		public void actionPerformed(ActionEvent arg0) {
 			// TODO Auto-generated method stub
 			try {
+
 				loggedDataCheck();
+
+				// 1==50 2==51 3==52 here we call
+				savedInputReg1 = (ModbustcpServer.inputRegister1).getValue();
+				savedInputReg2 = (ModbustcpServer.inputRegister2).getValue();
+				savedInputReg3 = (ModbustcpServer.inputRegister3).getValue();
+
+			} catch (NullPointerException e) {
+				System.out.println("Caught the NullPointerException");
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+
+	}
+	
+	class MyTimerActionListeneralarm implements ActionListener {
+		/**
+		 * This method runs every second and updates the timer in the calling
+		 * board object.
+		 */
+		@Override
+		public void actionPerformed(ActionEvent arg0) {
+			// TODO Auto-generated method stub
+			try {
+
+				alarmDataCheck();
+				try {
+					Thread.sleep(50000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				writeValLiveCheck();
 			} catch (NullPointerException e) {
 				System.out.println("Caught the NullPointerException");
 			}
@@ -161,50 +219,47 @@ public class Simulator implements InitializingBean, DisposableBean {
 
 	}
 
-	protected boolean valueValidation() {
+	protected boolean liveValValidation() {
 
 		logger.info("Simulator starting");
 
 		System.out.println("New Test Of Argos And Modbus Values");
-		String accessKey = "51F2531794288EBA64764B38D2516890";
-		/*
-		 * String systemId = "003011FAE2BA"; used to test purposes only String
-		 * parameterID1 = "66261.9269.172526"; String parameterID2 =
-		 * "66261.9269.173394"; String parameterID3 = "66261.9269.173393";
-		 */
-		account = new LoggedParameterData(accessKey);
+		String accessKey2 = "747C441E03934628AF2C13B730E4CCDD";
+		
 		if (i == 1) {
 
 			systemId = account.getSystemID();
-			parameterId = account.getParametersID(systemId);
+			parameterTag = account.getParametersTag(systemId);
+			loggedValBtimer.start();
 		}
 
-		String[][] inputRegisterId = account.getInputRegister(systemId, parameterId[0][1], parameterId[1][1],
-				parameterId[2][1]);
+		String[][] inputRegisterVal = account.getInputRegister(systemId, parameterTag[0], parameterTag[1],
+				parameterTag[2]);
 		boolean testStatus = false;
-		for (int i = 0; i < inputRegisterId.length; i++) {
+
+		for (int i = 0; i < inputRegisterVal.length; i++) {
 			for (int j = 0; j < 1; j++) {
-				// System.out.println(inputRegisterId[i][j] + "
-				// "+parameterId[i]);
-				if (inputRegisterId[i][j].equals(parameterId[i][j + 1])) {
 
-					System.out.println(inputRegisterId[i][j] + " == " + parameterId[i][j + 1]);
-					int val = Integer.parseInt(inputRegisterId[i][j + 1]);
+				System.out.println(inputRegisterVal[i][j] + " == " + inputRegisterVal[i][j + 1]);
+				int val;
 
-					if (parameterId[i][j].equals("test1")) {
-						System.out.println(
-								parameterId[i][j] + " " + val + " ==  " + ModbustcpServer.inputRegister1.getValue()
-										+ " ===> " + (testStatus = val == ModbustcpServer.inputRegister1.getValue()));
-					} else if (parameterId[i][j].equals("test2")) {
-						System.out.println(
-								parameterId[i][j] + " " + val + " == " + ModbustcpServer.inputRegister2.getValue()
-										+ " ===> " + (testStatus = val == ModbustcpServer.inputRegister2.getValue()));
-					} else if (parameterId[i][j].equals("test3")) {
-						System.out.println(
-								parameterId[i][j] + " " + val + " ==  " + ModbustcpServer.inputRegister3.getValue()
-										+ " ===> " + (testStatus = val == ModbustcpServer.inputRegister3.getValue()));
-					}
-
+				if (inputRegisterVal[i][j].equals("TEST1")) {
+					val = Integer.parseInt(inputRegisterVal[i][j + 1]);
+					System.out.println(
+							inputRegisterVal[i][j] + " " + val + " ==  " + ModbustcpServer.inputRegister1.getValue()
+									+ " ===> " + (testStatus = val == ModbustcpServer.inputRegister1.getValue()));
+				} else if (inputRegisterVal[i][j].equals("TEST2")) {
+					val = Integer.parseInt(inputRegisterVal[i][j + 1]);
+					System.out.println(
+							inputRegisterVal[i][j] + " " + val + " ==  " + ModbustcpServer.inputRegister2.getValue()
+									+ " ===> " + (testStatus = val == ModbustcpServer.inputRegister2.getValue()));
+				} else if (inputRegisterVal[i][j].equals("TEST3")) {
+					val = Integer.parseInt(inputRegisterVal[i][j + 1]);
+					System.out.println(
+							inputRegisterVal[i][j] + " " + val + " ==  " + ModbustcpServer.inputRegister3.getValue()
+									+ " ===> " + (testStatus = val == ModbustcpServer.inputRegister3.getValue()));
+				} else {
+					System.out.println("Something went wrong.....");
 				}
 
 			}
@@ -223,15 +278,122 @@ public class Simulator implements InitializingBean, DisposableBean {
 		return true;
 	}
 
-	protected void loggedDataCheck() {
-		String []loggeddata = new String [3];
-		String [][] temparr;
-		for (int i = 0; i < parameterId.length; i++)  
-		{
-			temparr= account.getLoggedData(systemId, parameterId[i][i],"2016-10-14T13:00:0020UTC","2016-10-14T15:54:0020");
-			loggeddata[i]  =  temparr[i][++i];
-			System.out.println(loggeddata[i] );
+	protected void loggedDataCheck() throws InterruptedException {
+
+		// inputRegtimer.wait(60000); error fix needed
+		// apiValtimer.wait(90000);
+		endTime = CurrentTime.getOneHourBack();
+		boolean test;
+		System.out.println("loggeddatacheck running....\t" + startTime + "\t" + endTime);
+		// savedInputReg1 Testa de med den loggade värde från API
+		// savedInputReg2
+		// savedInputReg3
+		// "2016-10-14T13:00:0020UTC"
+		int temparr[] = account.getLoggedData(systemId, "TEST1", startTime, endTime);
+
+		// test if there is values..
+		System.out.println("Size of temparr...." + temparr.length + "savedInputReg1 = " + savedInputReg1);
+
+		if (temparr[1] == savedInputReg1)
+			test = true;
+		else
+			test = false;
+
+		temparr = account.getLoggedData(systemId, "TEST2", startTime, endTime);
+		if (temparr[1] == savedInputReg2)
+			test = true;
+		else
+			test = false;
+
+		temparr = account.getLoggedData(systemId, "TEST3", startTime, endTime);
+		if (temparr[1] == savedInputReg3)
+			test = true;
+		else
+			test = false;
+
+		if (test) {
+			// counterSuccess.inc();
+			System.out.println("***********************  LogTest " + (i) + " is Successful ***********************");
+		} else {
+			// counterFail.inc();
+			System.out.println("***********************  LogTest " + (i) + " Failed      ***********************");
+
 		}
+
 	}
+
+	protected void alarmDataCheck() {
+		boolean test1 = false, test2 = false, test3 = false;
+
+		String[][] elm = account.alarmItems();
+
+		for (int i = 0; i < elm.length; i++) {
+			for (int j = 0; j < 1; j++) {
+				//TODO: Add test for info	+ metric
+				if (elm[i][j].equals("TEST1ALARM") 
+												   && elm[i][j + 2].equals("true")) {
+					test1 = true;
+				} else if (elm[i][j].equals("TEST2ALARM") 
+														  && elm[i][j + 2].equals("true")) {
+					test2 = true;
+				} else if (elm[i][j].equals("TEST3ALARM") 
+														  && elm[i][j + 2].equals("false")) {
+					test3 = true;
+				}
+
+			}
+			
+		}
+		
+		if (test1 && test2 && test3) 
+		{
+			// counterSuccess.inc();
+			System.out.println("***********************  AlarmTest " + (i) + " is Successful ***********************");
+		} else {
+			// counterFail.inc();
+			System.out.println("***********************  AlarmTest " + (i) + " Failed      ***********************");
+
+		}
+
+
+	}
+	
+	
+	
+	public void writeValLiveCheck()
+	{
+		Random randomObj = new Random();
+		System.out.println("Lets see...........Write value to live parameter............");
+		System.out.println("modbus = "+ModbustcpServer.holdingReg.getValue());
+		String holdingAdress = "HOLDINGT";
+		int val = randomObj.ints(251, 300).findFirst().getAsInt();
+		String [] liveValArr = 	account.writeLiveValue (systemId,holdingAdress,""+val);
+		boolean test1 = false;
+		ModbustcpServer.holdingReg.getValue();
+		for (int i = 0; i < liveValArr.length; i++) 
+		{
+				if (liveValArr[i].equals(holdingAdress)) 
+				{
+					System.out.println("live id = "+liveValArr[i+1]);
+					if (liveValArr[i+1].equals((""+ModbustcpServer.holdingReg.getValue())))
+							test1 = true;
+				}
+		}
+		
+		
+		if (test1) 
+		{
+			// counterSuccess.inc();
+			System.out.println("***********************  WriteLiveValTest " + (i) + " is Successful ***********************");
+		} else {
+			// counterFail.inc();
+			System.out.println("***********************  WriteLiveValTest " + (i) + " Failed      ***********************");
+
+		}//fix id with error code
+		System.out.println(ModbustcpServer.holdingReg.getValue() + "   after");
+
+		
+	}
+	
 
 }

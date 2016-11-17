@@ -11,6 +11,7 @@ import javax.swing.Timer;
 
 import net.wimpi.modbus.ModbusCoupler;
 import net.wimpi.modbus.net.ModbusTCPListener;
+import net.wimpi.modbus.procimg.SimpleDigitalIn;
 import net.wimpi.modbus.procimg.SimpleInputRegister;
 import net.wimpi.modbus.procimg.SimpleProcessImage;
 import net.wimpi.modbus.procimg.SimpleRegister;
@@ -39,7 +40,11 @@ public class ModbustcpServer implements InitializingBean, DisposableBean {
 	public static SimpleInputRegister inputRegister1;
 	public static SimpleInputRegister inputRegister2;
 	public static SimpleInputRegister inputRegister3;
-
+	
+	public static SimpleRegister holdingReg;
+		
+	
+	
 	public ModbustcpServer(ModbustcpConfig config) throws Exception
 	{
 		this.config = config;
@@ -57,37 +62,33 @@ public class ModbustcpServer implements InitializingBean, DisposableBean {
 
 		try {
 			logger.info("ModbustcpServer starting");
-
+			holdingReg =	 new SimpleRegister(251); 
 			inputRegister1 = new SimpleInputRegister(30);
 			inputRegister2 = new SimpleInputRegister(40);
 			inputRegister3 = new SimpleInputRegister(50);
-
-
 
 			// TODO: Check if this is a good way starting the Modbus/TCP Server
 
 			// 2. Prepare a process image
 			spi = new SimpleProcessImage();
-			spi.addRegister(new SimpleRegister(251));
-			spi.addInputRegister(inputRegister1);
+			//spi.addRegister(new SimpleRegister(251));
+			spi.addRegister(holdingReg);///holding
+			spi.addInputRegister(inputRegister1); 
+
 
 			// 3. Set the image on the coupler
 			ModbusCoupler.getReference().setProcessImage(spi);
 			ModbusCoupler.getReference().setMaster(false);
 			ModbusCoupler.getReference().setUnitID(15);
 
-			listener = new ModbusTCPListener(3);
+			listener = new ModbusTCPListener(5);
 			listener.setAddress(InetAddress.getByName("0.0.0.0"));
 			listener.setPort(config.modbusTcpServerPort());
 			listener.start();
-
-			// Register more after start.
-			// TODO: Test if this works
-			// TODO: How can registers be controlled in a better way?
-			spi.addRegister(publicRegister);
+		
 			spi.addInputRegister(inputRegister2);
-			spi.addRegister(new SimpleRegister(253));
 			spi.addInputRegister(inputRegister3);
+			
 
 
 
@@ -104,8 +105,6 @@ public class ModbustcpServer implements InitializingBean, DisposableBean {
 	public void destroy() throws Exception {
 		listener.stop();
 	}
-
-
 
 
 
