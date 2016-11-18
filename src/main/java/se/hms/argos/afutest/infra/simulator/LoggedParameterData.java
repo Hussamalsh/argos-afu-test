@@ -420,7 +420,7 @@ public class LoggedParameterData {
 
 		account.writeLiveValue(systemId, "HOLDINGT", "257");
 		Thread.sleep(10000);
-		out.println(ModbustcpServer.holdingReg.getValue());
+		//out.println(mModbustcpServer.holdingReg.getValue());
 
 	}
 

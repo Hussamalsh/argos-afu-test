@@ -11,4 +11,5 @@ public interface ModbustcpConfig extends Accessible
    @Key("modbus_tcp_server_port")
    @DefaultValue("502")
    public int modbusTcpServerPort();
+   
 }

@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
@@ -20,6 +22,8 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 
 import ch.qos.logback.core.net.SyslogOutputStream;
+import net.wimpi.modbus.procimg.SimpleProcessImage;
+import se.hms.argos.afutest.infra.modbustcp.ModbustcpBeans;
 import se.hms.argos.afutest.infra.modbustcp.ModbustcpServer;
 import se.hms.argos.afutest.infra.simulator.LoggedParameterData;
 
@@ -30,6 +34,9 @@ public class Simulator implements InitializingBean, DisposableBean {
 
 	@Autowired
 	MetricRegistry metricRegistry;
+	
+	
+    private ModbustcpServer mModbustcpServer = ModbustcpBeans.getBean();
 
 	// Metric counters for how many test is running
 	private final Counter counterTest = new Counter();
@@ -66,6 +73,8 @@ public class Simulator implements InitializingBean, DisposableBean {
 	private String startTime;
 	private String endTime;
 	private int[][] SavedInputReg = new int[2][3];
+	
+	
 
 	public Simulator(ModbustcpConfig c) throws Exception {
 		config = c;
@@ -74,9 +83,11 @@ public class Simulator implements InitializingBean, DisposableBean {
 		loggedValAtimer = new Timer(DELAY3A, new MyTimerActionListener3());
 		loggedValBtimer = new Timer(DELAY3B, new MyTimerActionListener3());
 		alarmtimer = new Timer(DELAY3, new MyTimerActionListeneralarm());
-		savedInputReg1 = (ModbustcpServer.inputRegister1).getValue();
-		savedInputReg2 = (ModbustcpServer.inputRegister2).getValue();
-		savedInputReg3 = (ModbustcpServer.inputRegister3).getValue();
+		
+
+		savedInputReg1 = (mModbustcpServer.getInputRegister1()).getValue();
+		savedInputReg2 = (mModbustcpServer.getInputRegister2()).getValue();
+		savedInputReg3 = (mModbustcpServer.getInputRegister3()).getValue();
 		startTime = CurrentTime.getCurretTime(true);
 		System.out.print("Simulator cons...........0000.............." + savedInputReg1);
 		String accessKey = "51F2531794288EBA64764B38D2516890";
@@ -115,14 +126,14 @@ public class Simulator implements InitializingBean, DisposableBean {
 		// for (int i =0; i < 30 ; i++){
 		/// TODO: Run every hour so that inputregister will change everytime
 
-		int iR1 = (ModbustcpServer.inputRegister1).getValue();
-		int iR2 = (ModbustcpServer.inputRegister2).getValue();
-		int iR3 = (ModbustcpServer.inputRegister3).getValue();
+		int iR1 = (mModbustcpServer.getInputRegister1()).getValue();
+		int iR2 = (mModbustcpServer.getInputRegister2()).getValue();
+		int iR3 = (mModbustcpServer.getInputRegister3()).getValue();
 		// SavedInputReg[1] = SavedInputReg[0].clone();
 		i++;
-		ModbustcpServer.inputRegister1.setValue((++iR1));
-		ModbustcpServer.inputRegister2.setValue((++iR2));
-		ModbustcpServer.inputRegister3.setValue((++iR3));
+		mModbustcpServer.getInputRegister1().setValue((++iR1));
+		mModbustcpServer.getInputRegister2().setValue((++iR2));
+		mModbustcpServer.getInputRegister3().setValue((++iR3));
 
 		// System.out.println(Arrays.deepToString(SavedInputReg));
 
@@ -179,9 +190,9 @@ public class Simulator implements InitializingBean, DisposableBean {
 				loggedDataCheck();
 
 				// 1==50 2==51 3==52 here we call
-				savedInputReg1 = (ModbustcpServer.inputRegister1).getValue();
-				savedInputReg2 = (ModbustcpServer.inputRegister2).getValue();
-				savedInputReg3 = (ModbustcpServer.inputRegister3).getValue();
+				savedInputReg1 = (mModbustcpServer.getInputRegister1()).getValue();
+				savedInputReg2 = (mModbustcpServer.getInputRegister2()).getValue();
+				savedInputReg3 = (mModbustcpServer.getInputRegister3()).getValue();
 
 			} catch (NullPointerException e) {
 				System.out.println("Caught the NullPointerException");
@@ -246,18 +257,18 @@ public class Simulator implements InitializingBean, DisposableBean {
 				if (inputRegisterVal[i][j].equals("TEST1")) {
 					val = Integer.parseInt(inputRegisterVal[i][j + 1]);
 					System.out.println(
-							inputRegisterVal[i][j] + " " + val + " ==  " + ModbustcpServer.inputRegister1.getValue()
-									+ " ===> " + (testStatus = val == ModbustcpServer.inputRegister1.getValue()));
+							inputRegisterVal[i][j] + " " + val + " ==  " + mModbustcpServer.getInputRegister1().getValue()
+									+ " ===> " + (testStatus = val == mModbustcpServer.getInputRegister1().getValue()));
 				} else if (inputRegisterVal[i][j].equals("TEST2")) {
 					val = Integer.parseInt(inputRegisterVal[i][j + 1]);
 					System.out.println(
-							inputRegisterVal[i][j] + " " + val + " ==  " + ModbustcpServer.inputRegister2.getValue()
-									+ " ===> " + (testStatus = val == ModbustcpServer.inputRegister2.getValue()));
+							inputRegisterVal[i][j] + " " + val + " ==  " + mModbustcpServer.getInputRegister2().getValue()
+									+ " ===> " + (testStatus = val == mModbustcpServer.getInputRegister2().getValue()));
 				} else if (inputRegisterVal[i][j].equals("TEST3")) {
 					val = Integer.parseInt(inputRegisterVal[i][j + 1]);
 					System.out.println(
-							inputRegisterVal[i][j] + " " + val + " ==  " + ModbustcpServer.inputRegister3.getValue()
-									+ " ===> " + (testStatus = val == ModbustcpServer.inputRegister3.getValue()));
+							inputRegisterVal[i][j] + " " + val + " ==  " + mModbustcpServer.getInputRegister3().getValue()
+									+ " ===> " + (testStatus = val == mModbustcpServer.getInputRegister3().getValue()));
 				} else {
 					System.out.println("Something went wrong.....");
 				}
@@ -364,18 +375,18 @@ public class Simulator implements InitializingBean, DisposableBean {
 	{
 		Random randomObj = new Random();
 		System.out.println("Lets see...........Write value to live parameter............");
-		System.out.println("modbus = "+ModbustcpServer.holdingReg.getValue());
+		System.out.println("modbus = "+mModbustcpServer.getHoldingReg().getValue());
 		String holdingAdress = "HOLDINGT";
 		int val = randomObj.ints(251, 300).findFirst().getAsInt();
 		String [] liveValArr = 	account.writeLiveValue (systemId,holdingAdress,""+val);
 		boolean test1 = false;
-		ModbustcpServer.holdingReg.getValue();
+		mModbustcpServer.getHoldingReg().getValue();
 		for (int i = 0; i < liveValArr.length; i++) 
 		{
 				if (liveValArr[i].equals(holdingAdress)) 
 				{
 					System.out.println("live id = "+liveValArr[i+1]);
-					if (liveValArr[i+1].equals((""+ModbustcpServer.holdingReg.getValue())))
+					if (liveValArr[i+1].equals((""+mModbustcpServer.getHoldingReg().getValue())))
 							test1 = true;
 				}
 		}
@@ -390,7 +401,7 @@ public class Simulator implements InitializingBean, DisposableBean {
 			System.out.println("***********************  WriteLiveValTest " + (i) + " Failed      ***********************");
 
 		}//fix id with error code
-		System.out.println(ModbustcpServer.holdingReg.getValue() + "   after");
+		System.out.println(mModbustcpServer.getHoldingReg().getValue() + "   after");
 
 		
 	}
