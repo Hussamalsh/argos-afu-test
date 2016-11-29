@@ -40,7 +40,7 @@ import net.wimpi.modbus.util.ThreadPool;
  * @author Dieter Wimberger
  * @version 1.2 (@date@)
  */
-public class ModbusTCPListener2 implements Runnable 
+public class ModbusTCPListener implements Runnable 
 {
 
   private static int c_RequestCounter = 0;
@@ -52,7 +52,7 @@ public class ModbusTCPListener2 implements Runnable
   private int m_FloodProtection = 5;
   private boolean m_Listening;
   private InetAddress m_Address;
-  private static final Logger logger = LoggerFactory.getLogger(ModbusTCPListener2.class);
+  private static final Logger logger = LoggerFactory.getLogger(ModbusTCPListener.class);
 
   /**
    * Constructs a ModbusTCPListener instance.<br>
@@ -60,7 +60,7 @@ public class ModbusTCPListener2 implements Runnable
    * @param poolsize the size of the <tt>ThreadPool</tt> used to handle
    *        incoming requests.
    */
-  public ModbusTCPListener2(int poolsize) {
+  public ModbusTCPListener(int poolsize) {
     m_ThreadPool = new ThreadPool(poolsize);
     try {
       m_Address = InetAddress.getLocalHost();
@@ -76,7 +76,7 @@ public class ModbusTCPListener2 implements Runnable
    *        incoming requests.
    * @param addr the interface to use for listening.
    */
-  public ModbusTCPListener2(int poolsize, InetAddress addr) {
+  public ModbusTCPListener(int poolsize, InetAddress addr) {
     m_ThreadPool = new ThreadPool(poolsize);
     m_Address = addr;
   }//constructor
@@ -149,7 +149,7 @@ public class ModbusTCPListener2 implements Runnable
               )
           );
           count();
-          logger.info("Client has read values and this is the Request nummer = " + c_RequestCounter);
+          logger.info("Client has read the values and this is the Request nummer = " + c_RequestCounter);
         } else {
           //just close the socket
           incoming.close();
@@ -185,6 +185,6 @@ public class ModbusTCPListener2 implements Runnable
     }
   }//count
 
-  private static final int REQUESTS_TOGC = 10;
+  private static final int REQUESTS_TOGC = 50;
 
 }//class ModbusTCPListener

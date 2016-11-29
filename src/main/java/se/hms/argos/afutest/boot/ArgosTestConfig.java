@@ -1,5 +1,14 @@
 package se.hms.argos.afutest.boot;
 
+/**
+* ArgosTestConfig.
+* 
+* <P>This is the configuration class that has the properties of the Argos server.
+*  
+* @author HMS
+* @version 1.0
+*/
+
 import org.aeonbits.owner.Config.LoadPolicy;
 import org.aeonbits.owner.Config.LoadType;
 import org.aeonbits.owner.Config.Sources;

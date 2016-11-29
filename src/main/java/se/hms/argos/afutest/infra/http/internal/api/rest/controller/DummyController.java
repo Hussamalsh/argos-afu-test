@@ -1,5 +1,14 @@
 package se.hms.argos.afutest.infra.http.internal.api.rest.controller;
 
+/**
+* InternalWebMvcSetup.
+* 
+* <P>This is the DummyController class that have autowired Metric register to count how many time the dummy function was called
+*  
+* @author HMS
+* @version 1.0
+*/
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;

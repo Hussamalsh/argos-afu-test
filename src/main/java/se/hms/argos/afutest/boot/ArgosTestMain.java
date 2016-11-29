@@ -1,5 +1,15 @@
 package se.hms.argos.afutest.boot;
 
+/**
+* ArgosTestMain.
+* 
+* <P>This is the main class that start the Argos server with the chosen configuration.
+*  
+* @author HMS
+* @version 1.0
+*/
+
+
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import se.hms.argos.afutest.boot.ArgosTestConfig;

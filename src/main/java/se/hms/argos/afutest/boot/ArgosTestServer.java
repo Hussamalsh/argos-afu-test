@@ -1,5 +1,12 @@
 package se.hms.argos.afutest.boot;
-
+/**
+* ArgosTestServer
+* 
+* <P>This is the Argos server class that start the Argos server with the taken configuration.
+*  
+* @author HMS
+* @version 1.0
+*/
 import org.eclipse.jetty.server.Connector;
 
 import se.hms.argos.afutest.infra.http.internal.InternalWebMvcSetup;

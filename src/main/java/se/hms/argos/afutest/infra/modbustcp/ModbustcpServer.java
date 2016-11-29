@@ -1,34 +1,25 @@
 package se.hms.argos.afutest.infra.modbustcp;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+/**
+* ModbustcpServer.
+* 
+* <P>This is the ModbustcpServer class that have 3 inputregisters and 1 holding register to use them for testing with argos.
+* <P>This class start the ModbusListener to listen to the client.
+* @author Hussam Alshammari
+* @author Lolita Mageramova
+* @version 1.0
+*/
 
-import javax.swing.Timer;
+import java.net.InetAddress;
 
 import net.wimpi.modbus.ModbusCoupler;
-import net.wimpi.modbus.msg.ReadMultipleRegistersRequest;
-import net.wimpi.modbus.procimg.SimpleDigitalIn;
 import net.wimpi.modbus.procimg.SimpleInputRegister;
 import net.wimpi.modbus.procimg.SimpleProcessImage;
 import net.wimpi.modbus.procimg.SimpleRegister;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 /**
@@ -41,30 +32,40 @@ public class ModbustcpServer implements InitializingBean, DisposableBean {
 	private static final Logger logger = LoggerFactory.getLogger(ModbustcpServer.class);
 
 	private final ModbustcpConfig config;
-
-	public ModbusTCPListener2 listener = null;
+	public ModbusTCPListener listener = null;
 	public SimpleProcessImage spi = null;
 	
-	// TODO: Fix how to control registers from other part of the code
-
 	private  SimpleInputRegister inputRegister1;
 	private  SimpleInputRegister inputRegister2;
 	private  SimpleInputRegister inputRegister3;
 	private  SimpleRegister holdingReg;
 		
 	
-	
+	/**
+	 * The default constructor.  
+	 * Initializes config variable of the ModbustcpServer.
+	 * @param config - Modbus/tcpconfig object
+	 */
 	public ModbustcpServer(ModbustcpConfig config) throws Exception
 	{
 		this.config = config;
 	}
 
+	/**
+	 * AfterPropertiesSet Method
+	 * AfterPropertiesSet start the simulator by calling the start() method
+	 */
 	@Override
 	public void afterPropertiesSet() 
 	{
 		start();
 	}
-
+	
+	/**
+	 * start Method
+	 * This method start the Modbuslistener and Initializes the 3 inputregisters and one holding register.
+	 * @return boolean value - the method return boolean value to test if it started with errors or not.
+	 */
 	protected boolean start() {
 
 
@@ -75,8 +76,6 @@ public class ModbustcpServer implements InitializingBean, DisposableBean {
 			inputRegister1 = new SimpleInputRegister(30);
 			inputRegister2 = new SimpleInputRegister(40);
 			inputRegister3 = new SimpleInputRegister(50);
-
-			// TODO: Check if this is a good way starting the Modbus/TCP Server
 
 			// 2. Prepare a process image
 			spi = new SimpleProcessImage();
@@ -92,16 +91,15 @@ public class ModbustcpServer implements InitializingBean, DisposableBean {
 			ModbusCoupler.getReference().setMaster(false);
 			ModbusCoupler.getReference().setUnitID(15);
 
-			listener = new ModbusTCPListener2(5);
+			listener = new ModbusTCPListener(5);
 			listener.setAddress(InetAddress.getByName("0.0.0.0"));
 			listener.setPort(config.modbusTcpServerPort());
 			listener.start();
-
+			
 			
 			
 			logger.info("This Slave have   " + spi.getRegisterCount() + " register");
 			logger.info("This Slave have " + spi.getInputRegisterCount() + " inputregisters");
-			// TODO: Is it possible to know when a client read values?
 			
 
 			return true;

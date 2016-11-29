@@ -1,9 +1,19 @@
 package se.hms.argos.afutest.infra.simulator;
 
+/**
+* The Simulator Class
+* 
+* <P>This is the Simulator class where the all actions happen, because this class test the combination of Netbiter and Argos server.
+* <P>It provides efficient methods for testing and have a MetricRegistry object which counts the successful and failed tests. 
+* <P>This class control values and validate thats everything is working as it should between the Modbus, Netbiter and Argos server
+* @author Hussam Alshammari
+* @author Lolita Mageramova
+* @version 1.0
+*/
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
-import java.util.Arrays;
+
 import java.util.Random;
 
 import javax.swing.Timer;
@@ -13,30 +23,23 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 
-import ch.qos.logback.core.net.SyslogOutputStream;
-import net.wimpi.modbus.procimg.SimpleProcessImage;
 import se.hms.argos.afutest.infra.modbustcp.ModbustcpBeans;
 import se.hms.argos.afutest.infra.modbustcp.ModbustcpServer;
-import se.hms.argos.afutest.infra.simulator.LoggedParameterData;
-
+import se.hms.argos.api.client.rest.ArgosDataCenter;
 import se.hms.argos.common.server.spring.mvc.MediaTypeConstants;
 
 @RequestMapping(produces = MediaTypeConstants.APPLICATION_JSON)
 public class Simulator implements InitializingBean, DisposableBean {
 
 	@Autowired
-	MetricRegistry metricRegistry;
-	
-	
-    private ModbustcpServer mModbustcpServer = ModbustcpBeans.getBean();
+	MetricRegistry metricRegistry; // MetricRegistry object used later to have counters of the test
+
+	private ModbustcpServer mModbustcpServer = ModbustcpBeans.getBean(); // Gets the Modbus server object
 
 	// Metric counters for how many test is running
 	private final Counter counterTest = new Counter();
@@ -45,100 +48,123 @@ public class Simulator implements InitializingBean, DisposableBean {
 	// Metric counters for unsuccessful test
 	private final Counter counterFail = new Counter();
 
+	// Metric counters for successful test for log
+	private final Counter counterSuccessLog = new Counter();
+	// Metric counters for unsuccessful test for log
+	private final Counter counterFailLog = new Counter();
+
+	// Metric counters for successful test for alarm
+	private final Counter counterSuccessAlarm = new Counter();
+	// Metric counters for unsuccessful test for alarm
+	private final Counter counterFailAlarm = new Counter();
+
+	// Metric counters for successful test for live value
+	private final Counter counterSuccessLiveVal = new Counter();
+	// Metric counters for unsuccessful test for live value
+	private final Counter counterFailLiveVal = new Counter();
+
 	private static final Logger logger = LoggerFactory.getLogger(Simulator.class);
 	private final ModbustcpConfig config;
 
-	private String systemId;
+	private String systemId; // The unique id of a system. 
+	//Array that have all the parameters of the system
 	private String[] parameterTag;
-	private int savedInputReg1, savedInputReg2, savedInputReg3;
+	private int savedInputReg1, savedInputReg2, savedInputReg3; // all the three variabels will hold the inputregister of the slave
 
-	/** Value - {@value}, timer object to count the time of the game. */
+	/** Value - {@value}, timer object to count the time of the test. */
 	private Timer inputRegtimer;
-	private Timer apiValtimer;
 	private Timer loggedValAtimer;
 	private Timer loggedValBtimer;
 	private Timer alarmtimer;
-						
-	private final int DELAY1 = 37890000; // 3600 000 for one hour
-	private final int DELAY2 = 3899999;
-	private final int DELAY3A = 7200000;// 7499 099;//7200 000; // two hours
-										// //10 800 000 tre hours
-	private final int DELAY3B = 7200000;// 7200 000; // two hours //10 800 000
-										// tre hours
 
-	private final int DELAY3 = 300000 ; //5min
-	
-	
-	private LoggedParameterData account;
-	private String startTime;
-	private String endTime;
-	private int[][] SavedInputReg = new int[2][3];
-	
-	
+	private final int DELAY1 = 3789000; // 3600 000 = for one hour
+	private final int DELAY3A = 7200000;// 7200 000 = two hours
+	private final int DELAY3B = 7200000;// 7200 000 = two hours 
+	private final int DELAY3 = 300000; // 5min
 
+	private ArgosDataCenter account; 
+	private String startTime;  //The start date and time in UTC. 
+	private String endTime;  //The end date and time in UTC. Can be used as start date in next call to this method. 
+
+	private int counter1, counter2 = 0;  // Count how many time the test was running
+
+	
+	/**
+	 * The default constructor.  
+	 * Initializes config variable of the simulator and other important variables and objects.
+	 * 
+	 * @param config - Modbus/tcpconfig object
+	 */
 	public Simulator(ModbustcpConfig c) throws Exception {
 		config = c;
 		inputRegtimer = new Timer(DELAY1, new MyTimerActionListener());
-		apiValtimer = new Timer(DELAY2, new MyTimerActionListener2());
 		loggedValAtimer = new Timer(DELAY3A, new MyTimerActionListener3());
 		loggedValBtimer = new Timer(DELAY3B, new MyTimerActionListener3());
 		alarmtimer = new Timer(DELAY3, new MyTimerActionListeneralarm());
-		
 
 		savedInputReg1 = (mModbustcpServer.getInputRegister1()).getValue();
 		savedInputReg2 = (mModbustcpServer.getInputRegister2()).getValue();
 		savedInputReg3 = (mModbustcpServer.getInputRegister3()).getValue();
 		startTime = CurrentTime.getCurretTime(true);
-		System.out.print("Simulator cons...........0000.............." + savedInputReg1);
-		String accessKey = "51F2531794288EBA64764B38D2516890";
-		account = new LoggedParameterData(accessKey);
+		account = new ArgosDataCenter();
 		systemId = account.getSystemID();
 	}
 
+	/**
+	 * AfterPropertiesSet method.  
+	 * Initializes metricRegistry variables and it starts the timers. 
+	 * 
+	 */
 	@Override
 	public void afterPropertiesSet() throws Exception {
-		System.out.println("EfterpropertiesSet..........................");
 		// Register metrics
 		if (metricRegistry != null) {
-			metricRegistry.register("example.test", counterTest);
-			metricRegistry.register("example.success", counterSuccess);
-			metricRegistry.register("example.fail", counterFail);
+			metricRegistry.register("example.testcounter", counterTest);
+
+			metricRegistry.register("example.successLiveVal", counterSuccess);
+			metricRegistry.register("example.failLiveVal", counterFail);
+			metricRegistry.register("example.successLogValTest", counterSuccessLog);
+			metricRegistry.register("example.failLogValTest", counterFailLog);
+			metricRegistry.register("example.successAlarmTest", counterSuccessAlarm);
+			metricRegistry.register("example.failAlarmTest", counterFailAlarm);
+			metricRegistry.register("example.successWLivevalueTest", counterSuccessLiveVal);
+			metricRegistry.register("example.failWLivevalueTest", counterFailLiveVal);
 
 		}
 
 		inputRegtimer.start();
-		apiValtimer.start();
 		loggedValAtimer.start();
 		alarmtimer.start();
-
 	}
+
 
 	@Override
 	public void destroy() throws Exception {
-		// inputRegtimer.stop();
-		// apiValtimer.stop();
-		// loggedValAtimer.stop();
+
 	}
-
-	private int i = 0;
-
+	
+	/**
+	 * ChangeInputRegister method.  
+	 * This metheod increase the 3 inputregisters of the Modbus slave and increase the counter of the metricregister.
+	 * 
+	 */
 	private void changeInputRegister() {
-		// for (int i =0; i < 30 ; i++){
-		/// TODO: Run every hour so that inputregister will change everytime
 
 		int iR1 = (mModbustcpServer.getInputRegister1()).getValue();
 		int iR2 = (mModbustcpServer.getInputRegister2()).getValue();
 		int iR3 = (mModbustcpServer.getInputRegister3()).getValue();
-		// SavedInputReg[1] = SavedInputReg[0].clone();
-		i++;
+		System.out.println(" Old Values == iR1 = " + iR1 + " iR2 = " + iR2 + "iR3 = " + iR3);
+		counter1++;
 		mModbustcpServer.getInputRegister1().setValue((++iR1));
 		mModbustcpServer.getInputRegister2().setValue((++iR2));
 		mModbustcpServer.getInputRegister3().setValue((++iR3));
 
-		// System.out.println(Arrays.deepToString(SavedInputReg));
+		System.out.println(" New Values == iR1 = " + mModbustcpServer.getInputRegister1().getValue() + " iR2 = "
+				+ mModbustcpServer.getInputRegister2().getValue() + " iR3 = "
+				+ mModbustcpServer.getInputRegister1().getValue());
 
 		counterTest.inc();
-		System.out.println("increment by one the inputregisters of the modbus.  Number of test  = " + i);
+		System.out.println("increment by one the inputregisters of the modbus.  Number of test  = " + counter1);
 
 	}
 
@@ -149,34 +175,27 @@ public class Simulator implements InitializingBean, DisposableBean {
 	class MyTimerActionListener implements ActionListener {
 		/**
 		 * This method runs every second and updates the timer in the calling
-		 * board object.
+		 * object.
 		 */
 		@Override
 		public void actionPerformed(ActionEvent arg0) {
-			// TODO Auto-generated method stub
-			System.out.println();
+			System.out.println("changeInputRegister(); RUNNING");
 			changeInputRegister();
-		}
-	}
-
-	class MyTimerActionListener2 implements ActionListener {
-		/**
-		 * This method runs every second and updates the timer in the calling
-		 * board object.
-		 */
-		@Override
-		public void actionPerformed(ActionEvent arg0) {
-			// TODO Auto-generated method stub
 			try {
+				Thread.sleep(60000);
 				liveValValidation();
 			} catch (NullPointerException e) {
 				System.out.println("Caught the NullPointerException");
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
-
 		}
-
 	}
-
+	
+	/**
+	 * This is an ActionListener3 that invoked every second to update the time to
+	 * update inputregister. The listener is added by the timer object.
+	 */
 	class MyTimerActionListener3 implements ActionListener {
 		/**
 		 * This method runs every second and updates the timer in the calling
@@ -184,12 +203,11 @@ public class Simulator implements InitializingBean, DisposableBean {
 		 */
 		@Override
 		public void actionPerformed(ActionEvent arg0) {
-			// TODO Auto-generated method stub
 			try {
 
 				loggedDataCheck();
 
-				// 1==50 2==51 3==52 here we call
+				
 				savedInputReg1 = (mModbustcpServer.getInputRegister1()).getValue();
 				savedInputReg2 = (mModbustcpServer.getInputRegister2()).getValue();
 				savedInputReg3 = (mModbustcpServer.getInputRegister3()).getValue();
@@ -197,7 +215,6 @@ public class Simulator implements InitializingBean, DisposableBean {
 			} catch (NullPointerException e) {
 				System.out.println("Caught the NullPointerException");
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
@@ -205,6 +222,10 @@ public class Simulator implements InitializingBean, DisposableBean {
 
 	}
 	
+	/**
+	 * This is an ActionListeneralarm that invoked every second to update the time to
+	 * update inputregister. The listener is added by the timer object.
+	 */
 	class MyTimerActionListeneralarm implements ActionListener {
 		/**
 		 * This method runs every second and updates the timer in the calling
@@ -212,16 +233,17 @@ public class Simulator implements InitializingBean, DisposableBean {
 		 */
 		@Override
 		public void actionPerformed(ActionEvent arg0) {
-			// TODO Auto-generated method stub
 			try {
 
-				alarmDataCheck();
-				try {
-					Thread.sleep(50000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				writeValLiveCheck();
+				
+				 alarmDataCheck();
+				 try {
+					  Thread.sleep(50000); 
+					 }
+				 catch(InterruptedException e) 
+				 { e.printStackTrace(); }
+				 writeValLiveCheck(); counter2++;
+				 
 			} catch (NullPointerException e) {
 				System.out.println("Caught the NullPointerException");
 			}
@@ -229,17 +251,20 @@ public class Simulator implements InitializingBean, DisposableBean {
 		}
 
 	}
-
+	
+	/**
+	 * This is an liveValValidation method.
+	 * It compares values from Argos server with  Modbus slave.
+	 * @return boolean - return boolean value true/false if test fails or succeed
+	 * 
+	 */
 	protected boolean liveValValidation() {
 
 		logger.info("Simulator starting");
 
 		System.out.println("New Test Of Argos And Modbus Values");
-		String accessKey2 = "747C441E03934628AF2C13B730E4CCDD";
-		
-		if (i == 1) {
 
-			systemId = account.getSystemID();
+		if (counter1 == 1) {
 			parameterTag = account.getParametersTag(systemId);
 			loggedValBtimer.start();
 		}
@@ -256,19 +281,19 @@ public class Simulator implements InitializingBean, DisposableBean {
 
 				if (inputRegisterVal[i][j].equals("TEST1")) {
 					val = Integer.parseInt(inputRegisterVal[i][j + 1]);
-					System.out.println(
-							inputRegisterVal[i][j] + " " + val + " ==  " + mModbustcpServer.getInputRegister1().getValue()
-									+ " ===> " + (testStatus = val == mModbustcpServer.getInputRegister1().getValue()));
+					System.out.println(inputRegisterVal[i][j] + " " + val + " ==  "
+							+ mModbustcpServer.getInputRegister1().getValue() + " ===> "
+							+ (testStatus = val == mModbustcpServer.getInputRegister1().getValue()));
 				} else if (inputRegisterVal[i][j].equals("TEST2")) {
 					val = Integer.parseInt(inputRegisterVal[i][j + 1]);
-					System.out.println(
-							inputRegisterVal[i][j] + " " + val + " ==  " + mModbustcpServer.getInputRegister2().getValue()
-									+ " ===> " + (testStatus = val == mModbustcpServer.getInputRegister2().getValue()));
+					System.out.println(inputRegisterVal[i][j] + " " + val + " ==  "
+							+ mModbustcpServer.getInputRegister2().getValue() + " ===> "
+							+ (testStatus = val == mModbustcpServer.getInputRegister2().getValue()));
 				} else if (inputRegisterVal[i][j].equals("TEST3")) {
 					val = Integer.parseInt(inputRegisterVal[i][j + 1]);
-					System.out.println(
-							inputRegisterVal[i][j] + " " + val + " ==  " + mModbustcpServer.getInputRegister3().getValue()
-									+ " ===> " + (testStatus = val == mModbustcpServer.getInputRegister3().getValue()));
+					System.out.println(inputRegisterVal[i][j] + " " + val + " ==  "
+							+ mModbustcpServer.getInputRegister3().getValue() + " ===> "
+							+ (testStatus = val == mModbustcpServer.getInputRegister3().getValue()));
 				} else {
 					System.out.println("Something went wrong.....");
 				}
@@ -279,30 +304,30 @@ public class Simulator implements InitializingBean, DisposableBean {
 
 		if (testStatus) {
 			counterSuccess.inc();
-			System.out.println("***********************  Test " + i + " is Successful ***********************");
+			System.out.println(
+					"***********************  TestliveValue " + counter1 + " is Successful ***********************");
 		} else {
 			counterFail.inc();
-			System.out.println("***********************  Test " + i + " Failed      ***********************");
+			System.out.println(
+					"***********************  TestliveValue " + counter1 + " Failed      ***********************");
 
 		}
 
 		return true;
 	}
-
+	/**
+	 * LoggedDataCheck method.
+	 * It compares logged values from Argos server with  Modbus slave.
+	 * 
+	 */
 	protected void loggedDataCheck() throws InterruptedException {
 
-		// inputRegtimer.wait(60000); error fix needed
-		// apiValtimer.wait(90000);
 		endTime = CurrentTime.getOneHourBack();
 		boolean test;
 		System.out.println("loggeddatacheck running....\t" + startTime + "\t" + endTime);
-		// savedInputReg1 Testa de med den loggade värde från API
-		// savedInputReg2
-		// savedInputReg3
-		// "2016-10-14T13:00:0020UTC"
+
 		int temparr[] = account.getLoggedData(systemId, "TEST1", startTime, endTime);
 
-		// test if there is values..
 		System.out.println("Size of temparr...." + temparr.length + "savedInputReg1 = " + savedInputReg1);
 
 		if (temparr[1] == savedInputReg1)
@@ -323,88 +348,87 @@ public class Simulator implements InitializingBean, DisposableBean {
 			test = false;
 
 		if (test) {
-			// counterSuccess.inc();
-			System.out.println("***********************  LogTest " + (i) + " is Successful ***********************");
+			counterSuccessLog.inc();
+			System.out.println(
+					"***********************  LogTest " + (counter1) + " is Successful ***********************");
 		} else {
-			// counterFail.inc();
-			System.out.println("***********************  LogTest " + (i) + " Failed      ***********************");
+			counterFailLog.inc();
+			System.out
+					.println("***********************  LogTest " + (counter1) + " Failed      ***********************");
 
 		}
 
 	}
-
+	/**
+	 * AlarmDataCheck method.
+	 * It checks if the alarm was triggered or not and concludes if it was successful or not.
+	 * 
+	 */
 	protected void alarmDataCheck() {
+
 		boolean test1 = false, test2 = false, test3 = false;
 
 		String[][] elm = account.alarmItems();
 
 		for (int i = 0; i < elm.length; i++) {
 			for (int j = 0; j < 1; j++) {
-				//TODO: Add test for info	+ metric
-				if (elm[i][j].equals("TEST1ALARM") 
-												   && elm[i][j + 2].equals("true")) {
+				if (elm[i][j].equals("TEST1ALARM") && elm[i][j + 2].equals("true")) {
 					test1 = true;
-				} else if (elm[i][j].equals("TEST2ALARM") 
-														  && elm[i][j + 2].equals("true")) {
+				} else if (elm[i][j].equals("TEST2ALARM") && elm[i][j + 2].equals("true")) {
 					test2 = true;
-				} else if (elm[i][j].equals("TEST3ALARM") 
-														  && elm[i][j + 2].equals("false")) {
+				} else if (elm[i][j].equals("TEST3ALARM") && elm[i][j + 2].equals("false")) {
 					test3 = true;
 				}
 
 			}
-			
+
 		}
-		
-		if (test1 && test2 && test3) 
-		{
-			// counterSuccess.inc();
-			System.out.println("***********************  AlarmTest " + (i) + " is Successful ***********************");
+
+		if (test1 && test2 && test3) {
+			counterSuccessAlarm.inc();
+			System.out.println(
+					"***********************  AlarmTest " + (counter2) + " is Successful ***********************");
 		} else {
-			// counterFail.inc();
-			System.out.println("***********************  AlarmTest " + (i) + " Failed      ***********************");
+			counterFailAlarm.inc();
+			System.out.println(
+					"***********************  AlarmTest " + (counter2) + " Failed      ***********************");
 
 		}
-
 
 	}
-	
-	
-	
-	public void writeValLiveCheck()
-	{
+	/**
+	 * WriteValLiveCheck method.
+	 * A value is written in order to change holding register value. 
+	 * It tests if a value was changed correctly or not.
+	 * 
+	 */
+	public void writeValLiveCheck() {
 		Random randomObj = new Random();
 		System.out.println("Lets see...........Write value to live parameter............");
-		System.out.println("modbus = "+mModbustcpServer.getHoldingReg().getValue());
+		System.out.println("modbus = " + mModbustcpServer.getHoldingReg().getValue());
 		String holdingAdress = "HOLDINGT";
 		int val = randomObj.ints(251, 300).findFirst().getAsInt();
-		String [] liveValArr = 	account.writeLiveValue (systemId,holdingAdress,""+val);
+		String[] liveValArr = account.writeLiveValue(systemId, holdingAdress, "" + val);
 		boolean test1 = false;
 		mModbustcpServer.getHoldingReg().getValue();
-		for (int i = 0; i < liveValArr.length; i++) 
-		{
-				if (liveValArr[i].equals(holdingAdress)) 
-				{
-					System.out.println("live id = "+liveValArr[i+1]);
-					if (liveValArr[i+1].equals((""+mModbustcpServer.getHoldingReg().getValue())))
-							test1 = true;
-				}
+		for (int i = 0; i < liveValArr.length; i++) {
+			if (liveValArr[i].equals(holdingAdress)) {
+				System.out.println("live id = " + liveValArr[i + 1]);
+				if (liveValArr[i + 1].equals(("" + mModbustcpServer.getHoldingReg().getValue())))
+					test1 = true;
+			}
 		}
-		
-		
-		if (test1) 
-		{
-			// counterSuccess.inc();
-			System.out.println("***********************  WriteLiveValTest " + (i) + " is Successful ***********************");
+		if (test1) {
+			counterSuccessLiveVal.inc();
+			System.out.println("***********************  WriteLiveValTest " + (counter2)
+					+ " is Successful ***********************");
 		} else {
-			// counterFail.inc();
-			System.out.println("***********************  WriteLiveValTest " + (i) + " Failed      ***********************");
+			counterFailLiveVal.inc();
+			System.out.println(
+					"***********************  WriteLiveValTest " + (counter2) + " Failed      ***********************");
 
-		}//fix id with error code
+		} 
 		System.out.println(mModbustcpServer.getHoldingReg().getValue() + "   after");
-
-		
 	}
-	
 
 }

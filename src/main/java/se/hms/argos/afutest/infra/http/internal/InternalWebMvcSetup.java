@@ -1,5 +1,12 @@
 package se.hms.argos.afutest.infra.http.internal;
-
+/**
+* InternalWebMvcSetup.
+* 
+* <P>This is the InternalWebMvcSetup class that set up the beans to the Spring framework
+*  
+* @author HMS
+* @version 1.0
+*/
 import java.util.List;
 
 import org.springframework.context.annotation.Bean;

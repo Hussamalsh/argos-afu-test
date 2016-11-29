@@ -1,40 +1,69 @@
-package se.hms.argos.afutest.infra.simulator;
+package se.hms.argos.api.client.rest;
 
-import java.io.BufferedReader;
+/**
+* ArgosDataCenter
+* 
+* <P>This is the ArgosDataCenter class which is responsible to get right collected values from Argos server
+*  by implementing the suitable REST API. This class handles data from connected field systems on the Argos server
+*  
+* @author Hussam Alshammari
+* @author Lolita Mageramova
+* @version 1.0
+*/
+
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.List;
-
+import java.util.*;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
-import com.jayway.restassured.response.Response;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
 
-import se.hms.argos.afutest.infra.modbustcp.ModbustcpServer;
+public class ArgosDataCenter {
 
-import com.sun.jersey.api.client.WebResource;
-
-public class LoggedParameterData {
 	private final String accessKey;
 	private final static PrintStream out = java.lang.System.out;
 	private final Client client = Client.create();
 
 	private final static String BASEURL = "https://api.netbiter.net/operation/v1/rest/json";
 	private final static String SYSTEM_RESOURCE_URL = BASEURL + "/system";
+	
+	/**
+	 * The default constructor.  
+	 * Initializes accessKey variable of the simulator.
+	 */
+	public ArgosDataCenter() {
+		this.accessKey = setup();
+	}
+	
+	/**
+	 * The setup method  
+	 * Initializes accessKey variable of the simulator by creating the user object
+	 * @return ak = the method return the accesskey of the user.
+	 */
+	private String setup() {
+		// create a scanner so we can read the command-line input
+		Scanner scanner = new Scanner(java.lang.System.in);
+		// prompt for the user's name
+		out.print("\nEnter your username: ");
+		// get their input as a String
+		String userName = scanner.next();
 
-	public LoggedParameterData(String accessKey) {
-		this.accessKey = accessKey;
+		// prompt for their password
+		out.print("\nEnter your password: ");
+		// get the password
+		String password = scanner.next();
+		String ak;
+		out.println("Your accessKey is = " + (ak= new User().getAccessKey(userName, password)));
+		scanner.close();
+		return ak;
 	}
 
-	/*
+	/**
+	 * the getSystemID method
 	 * Get system id that the access key give access to.
+	 * @return systemID = the method return the systemID of the user.
 	 */
 	public String getSystemID() {
 		String systemID = "";
@@ -60,8 +89,11 @@ public class LoggedParameterData {
 		return systemID;
 	}
 
-	/*
+	/**
+	 * the getParametersTag method
 	 * Get system parameters id that the access key give access to.
+	 * @param systemID - system id of the system
+	 * @return getParametersTag = the method return all yhr parameters of the system as an array.
 	 */
 	public String[] getParametersTag(String systemID) {
 		String[] parameterID = null;
@@ -91,8 +123,14 @@ public class LoggedParameterData {
 		return parameterID;
 	}
 
-	/*
-	 * Get the inputregister loged value from the argos REST api.
+	/**
+	 * getInputRegister method
+	 * Return a list of all systems for which the configuration has been updated since last request. 
+	 * @param systemID - system id of the system
+	 * @param parameterID1 - The first parameter of the system
+	 * @param parameterID2 - The second parameter of the system
+	 * @param parameterID2 - The third parameter of the system
+	 * @return inputRegister = The array holding the input registers as element
 	 */
 	public String[][] getInputRegister(String systemId, String parameterID1, String parameterID2, String parameterID3) {
 		String[][] inputRegister = null;
@@ -110,13 +148,10 @@ public class LoggedParameterData {
 			// Deserialize the JSON data.
 			List<liveData> systems = new Gson().fromJson(strResponse, new TypeToken<List<liveData>>() {
 			}.getType());
-			// out.println("\n");
 			// Print information about the systems.
 			inputRegister = new String[systems.size()][systems.size()];
 			for (liveData system : systems) {
 				col = 0;
-				// out.println(String.format("timestamp: %s",system.timestamp));
-				// out.println(String.format("value: %s", system.value));
 				out.println((inputRegister[row][col++] = system.id));
 				out.println("\t" + (inputRegister[row++][col] = system.value));
 			}
@@ -130,8 +165,14 @@ public class LoggedParameterData {
 		return inputRegister;
 	}
 
-	/*
-	 * Get the inputregister loged value from the argos REST api.
+	/**
+	 * The getLoggedData method
+	 * Return a list of historical logged parameter data for a given parameter within a system.
+	 * @param systemID - system id of the system
+	 * @param parameterID - The parameter of the system
+	 * @param startdate - The UTC start date and time for the list
+	 * @param enddate - The UTC end date and time for the list
+	 * @return getLoggedData = The array holding the logged values as element
 	 */
 	public int[] getLoggedData(String systemId, String parameterID, String startdate, String enddate) {
 		int[] loggedData = null;
@@ -141,7 +182,6 @@ public class LoggedParameterData {
 				.path(parameterID).queryParam("accesskey", accessKey).queryParam("startdate", startdate)//
 				.queryParam("enddate", enddate) // "2016-10-14T14:00:0020"
 				.queryParam("limitrows", "2").get(ClientResponse.class);
-		// 66261.9269.173394?accesskey=51F2531794288EBA64764B38D2516890&startdate=2016-10-14T08:00:0020UTC&enddate=2016-10-14T13:30:0020
 		String strResponse = clientResponse.getEntity(String.class);
 
 		// Do we have a valid request.
@@ -150,14 +190,11 @@ public class LoggedParameterData {
 			// Deserialize the JSON data.
 			List<LoggedData> systems = new Gson().fromJson(strResponse, new TypeToken<List<LoggedData>>() {
 			}.getType());
-			// out.println("\n");
 			// Print information about the systems.
 			loggedData = new int[systems.size()];
 			out.println(systems.size());
 			for (LoggedData system : systems) {
-				// col = 0;
-				// out.println(String.format("timestamp: %s",system.timestamp));
-				// out.println(String.format("value: %s", system.value));
+
 				out.println((system.timestamp));
 				int val = Integer.parseInt(system.value);
 				out.print((loggedData[row++] = val) + "\n");
@@ -171,57 +208,12 @@ public class LoggedParameterData {
 
 		return loggedData;
 	}
-
-	public String[][] getalarmData(String startdate) {
-		String[][] alarmData = null;
-		out.println("Lets see...........AlarmData from API............");
-		int row = 0, col = 0;
-		// https://api.netbiter.net/operation/v1/rest/json/updated/alarms?accesskey=747C441E03934628AF2C13B730E4CCDD&startdate=2016-10-24T08:35:00Z
-
-		ClientResponse clientResponse = client
-				.resource("https://api.netbiter.net/operation/v1/rest/json/updated/alarms")
-				.queryParam("accesskey", accessKey).queryParam("startdate", "2016-10-24T08:35:00Z")
-				.get(ClientResponse.class);
-
-		String strResponse = clientResponse.getEntity(String.class);
-
-		/*
-		 * JsonDeserializationContext jdc = null; JsonElement je = null;
-		 * AlarmData p = jdc.deserialize(je, AlarmData.class); List<AlarmData>
-		 * pList = new ArrayList<AlarmData>(1); // pList.add(p);
-		 */
-
-		// Do we have a valid request.
-		if (clientResponse.getClientResponseStatus() == Status.OK) {
-
-			// Deserialize the JSON data.
-			List<AlarmData> systems = new Gson().fromJson(strResponse, new TypeToken<List<AlarmData>>() {
-			}.getType());
-			// out.println("\n");
-			// Print information about the systems.
-			alarmData = new String[systems.size()][systems.size()];
-			out.println(systems.size());
-			for (AlarmData system : systems) {
-				col = 0;
-				// out.println(String.format("timestamp: %s",system.timestamp));
-				// out.println(String.format("value: %s", system.value));
-				out.println((system.acked));
-				out.print((alarmData[row++][col++] = system.active + "\n"));
-				out.print((alarmData[row][col++] = system.id + "\n"));
-				out.print((alarmData[row][col] = system.info + "\n"));
-				out.print((system.timestamp + "\n"));
-			}
-
-			// Print information about the system.
-
-		} else {
-			printErrorInformation(strResponse);
-		}
-
-		return alarmData;
-	}
-
-	// seeeeeeeeeeeeeeeeeeeeeeee
+	
+	/**
+	 * The printCurrentAlarmStatus method  
+	 * This method gets  all the existed alarms from the system.
+	 * @return alarms = The array holding the alarm information
+	 */
 	public ArrayList<AlarmData> printCurrentAlarmStatus() {
 		ClientResponse clientResponse = client.resource(BASEURL).path("updated").path("alarms")
 				.queryParam("accesskey", accessKey).queryParam("startdate", "2016-10-24T08:35:00Z")
@@ -242,7 +234,13 @@ public class LoggedParameterData {
 		return alarm.alarms;
 	}
 
-	protected String[][] alarmItems() {
+	/**
+	 * The alarmItems method  
+	 * Return a list of all alarms generated from a given start date until current time,
+	 * using the access key requested by this method. 
+	 * @return alarms = The array holding the alarm information
+	 */
+	public String[][] alarmItems() {
 		ArrayList<AlarmData> aList = printCurrentAlarmStatus();
 		String[][] itemsArr = new String[aList.size()][3];
 
@@ -256,8 +254,6 @@ public class LoggedParameterData {
 			out.println(String.format("Severity: %s", alarm.severity));
 			out.println(String.format("Last modified: %s", alarm.timestamp));
 			out.println(String.format("TriggerOrigin: %s", alarm.triggerOrigin));
-			// out.println(String.format("Alarm class: %s", alarm.alarmClass));
-			// out.println(String.format("Device name: %s", alarm.deviceName));
 			out.println(String.format("Acked: %s", alarm.acked));
 			out.println(String.format("Active: %s", itemsArr[row++][col++] = "" + alarm.active));
 
@@ -268,7 +264,15 @@ public class LoggedParameterData {
 
 	}
 
-	protected String[] writeLiveValue(String systemId, String id, String value) {
+	/**
+	 * The writeLiveValue method  
+	 * Write a value to a connected device with set enabled for a register.
+	 * @param systemId - system id of the system
+	 * @param id - The parameter id’s that will be written to. This could be tags if it is used
+	 * @param value - The value that should be written to the parameter. 
+	 * @return liveValueArr = The array holding the response parameters
+	 */
+	public String[] writeLiveValue(String systemId, String id, String value) {
 		String[] liveValueArr = null;
 		int row = 0, col;
 		JsonObject input2 = new JsonObject();
@@ -304,6 +308,10 @@ public class LoggedParameterData {
 		return liveValueArr;
 	}
 
+	/**
+	 * The System CLass 
+	 * This is a class that have all the variables that can be used to get the write values from Argos server
+	 */
 	private class System {
 
 		public boolean activated, suspended;
@@ -311,43 +319,61 @@ public class LoggedParameterData {
 		public int projectId;
 	}
 
+	/**
+	 * The ParameterID CLass 
+	 * ParameterID inherits the class System and have more variables to get more information about the system.
+	 */
 	private class ParameterID extends System {
 		public String deviceName, pointType, unit, logInterval;
 	}
 
+	/**
+	 * The ParameterID CLass 
+	 * ParameterID inherits the class System and have more variables to get more information about the system.
+	 */
 	private class liveData extends System {
 		public String value;
 	}
 
+	/**
+	 * The ParameterID CLass 
+	 * ParameterID inherits the class System and have more variables to get more information about the system.
+	 */
 	private class LoggedData extends System {
 		public String timestamp;
 		public String value;
 	}
 
+	/**
+	 * The Alarm CLass 
+	 * Alarm inherits the class System and have more variables to get more information about the alarms on the system.
+	 */
 	private class Alarm {
 		ArrayList<AlarmData> alarms;
 	}
 
+	/**
+	 * The AlarmData CLass 
+	 * AlarmData inherits the class System and have more variables to get more information about the alarms on the system.
+	 */
 	private class AlarmData extends System {
 		public String timestamp, severity, triggerOrigin, info;
 		public boolean acked, active;
 	}
 
+	/**
+	 * The Error CLass 
+	 * Error class have both the code of the error and the error message variables, 
+	 * to show the code and the message of the error
+	 */
 	private class Error {
 		public String code;
 		public String message;
 	}
 
-	private class Synch {
-		ArrayList<SynchData> alarms;
-	}
-
-	private class SynchData extends liveData {
-
-	}
-
-	/*
+	/**
 	 * Print information about occurred error.
+	 * @param errorResponse - the response of the error from the Argos server. 
 	 */
 	private void printErrorInformation(String errorResponse) {
 		if (errorResponse != null) {
@@ -360,6 +386,10 @@ public class LoggedParameterData {
 		}
 	}
 
+	/**
+	 * The main method 
+	 * This method is used for test purposes only.
+	 */
 	public static void main(String[] args) throws InterruptedException {
 		String accessKey = "51F2531794288EBA64764B38D2516890";
 		String accessKey2 = "747C441E03934628AF2C13B730E4CCDD";
@@ -371,56 +401,17 @@ public class LoggedParameterData {
 		 * "66261.9269.173393";
 		 */
 
-		LoggedParameterData account = new LoggedParameterData(accessKey);
+		ArgosDataCenter account = new ArgosDataCenter();
 		String systemId = account.getSystemID();
 		String[] parameterTag = account.getParametersTag(systemId);
 
-		// Print logged data for a given parameter == oldcode
 
-		// account.getInputRegister(systemId, parameterTag [0], parameterTag
-		// [1], parameterTag[2]);
-		// startdate = Ex="2016-10-14T10:54:0020UTC" ,,, enddate
-		// Ex="2016-10-14T10:54:0020UTC"
-		String StartTime = "2016-10-26T08:15:00ZUTC";// CurrentTime.getCurretTime(true);
-		String endTime = "2016-10-26T09:20:00Z";
-		// int temparr[]= account.getLoggedData(systemId, "TEST1",StartTime ,
-		// endTime);
-		// account.getalarmData(systemId, "TEST1ALARM");
-		// startdate=2016-10-24T08:35:00Z
-		// account.getalarmData("2016-10-24T08:35:00Z");
-		/*
-		 * String[][] elm = account.alarmItems();
-		 * 
-		 * for(int i = 0; i<elm.length; i++) { for(int j = 0; j<3; j++)
-		 * out.println(elm[i][j]); }
-		 */
-
-		/*
-		 * 
-		 * PUT
-		 * https://api.netbiter.net/operation/v1/rest/json/system/003011FB1234/
-		 * live/async?accesskey=1234567890ABCDEFCGHIJ&id=967.0.1111&id=967.0.
-		 * 1112
-		 * 
-		 * Data: [ { "id": "967.0.1111", "value": "32" }, { "id": "967.0.1112",
-		 * "value": "0" } ]
-		 * 
-		 */
-
-		// account.getAsynchStart2(systemId, parameterTag[0]);
-		// account.assItems(systemId);
-
-		/*
-		 * 
-		 * Test write value to live parameter
-		 * 
-		 */
 
 		out.println("Lets see...........Write value to live parameter............");
 
 		account.writeLiveValue(systemId, "HOLDINGT", "257");
 		Thread.sleep(10000);
-		//out.println(mModbustcpServer.holdingReg.getValue());
+		// out.println(mModbustcpServer.holdingReg.getValue());
 
 	}
 
